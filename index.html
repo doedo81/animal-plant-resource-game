@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>생활 속 동식물 자원 수업</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", Arial, sans-serif;
+      color: #203027;
+      background:
+        radial-gradient(circle at 15% 10%, rgba(246, 189, 74, .35), transparent 24rem),
+        radial-gradient(circle at 90% 20%, rgba(64, 154, 98, .22), transparent 26rem),
+        #fbf7ed;
+    }
+    main {
+      width: min(920px, 100%);
+      margin: 0 auto;
+      padding: 36px 18px;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(32px, 6vw, 58px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+    p {
+      margin: 0 0 22px;
+      color: #5e6d63;
+      font-size: clamp(17px, 2.4vw, 23px);
+      line-height: 1.5;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 24px;
+    }
+    a {
+      display: grid;
+      min-height: 210px;
+      align-content: center;
+      gap: 10px;
+      padding: 24px;
+      border-radius: 14px;
+      text-decoration: none;
+      color: #fff;
+      box-shadow: 0 16px 34px rgba(38, 46, 38, .14);
+    }
+    a strong {
+      font-size: clamp(28px, 4vw, 40px);
+      line-height: 1.1;
+    }
+    a span {
+      font-size: 18px;
+      line-height: 1.45;
+      opacity: .95;
+    }
+    .game { background: linear-gradient(145deg, #2f7a4f, #2e6f73); }
+    .sheet { background: linear-gradient(145deg, #d46f3d, #b54f48); }
+    .note {
+      margin-top: 20px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      background: rgba(255, 254, 249, .82);
+      border: 2px solid #dfcda8;
+      color: #4f5f54;
+      font-size: 16px;
+    }
+    @media (max-width: 720px) {
+      .cards { grid-template-columns: 1fr; }
+      a { min-height: 170px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>생활 속 동식물 자원 수업</h1>
+    <p>교과서 34-35쪽을 읽은 뒤, 분류 게임을 풀고 학습지에 결과를 기록하세요.</p>
+    <section class="cards">
+      <a class="game" href="./animal-plant-resource-game.html">
+        <strong>분류 게임 시작</strong>
+        <span>1게임: 자원의 활용<br>2게임: 활용 목적에 따른 분류</span>
+      </a>
+      <a class="sheet" href="./animal-plant-resource-worksheet.html">
+        <strong>개인 학습지 열기</strong>
+        <span>개념 정리, 점수 기록, 정답 분류표를 작성합니다.</span>
+      </a>
+    </section>
+    <div class="note">학습지는 선생님이 인쇄해서 나눠 주거나, 학생이 태블릿에서 열어 참고할 수 있습니다.</div>
+  </main>
+</body>
+</html>
