@@ -1,0 +1,9 @@
+# 실행 산출물 — 원고/버스 원장/캐시는 저장소에 커밋하지 않는다
+workspace/
+session_state/
+node_modules/
+
+# 로컬 설정 (API 키·모델 오버라이드) — 절대 커밋 금지
+config/local.json
+.env
+.env.*

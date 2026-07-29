@@ -1,0 +1,21 @@
+{
+  "name": "novel-factory",
+  "version": "1.0.0",
+  "description": "다중 에이전트 소설 자동 생산 시스템 (PM / 팀장 / 팀원 + Handoff Bus)",
+  "type": "commonjs",
+  "main": "src/cli.js",
+  "bin": {
+    "novel": "src/cli.js"
+  },
+  "scripts": {
+    "start": "node src/cli.js",
+    "demo": "node src/cli.js run --preset webnovel --idea \"기억을 파는 대가로 마력을 얻는 소년\" --chapters 2 --provider mock",
+    "test": "node test/smoke.test.js",
+    "bus": "node src/cli.js bus tail"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "dependencies": {},
+  "license": "MIT"
+}
