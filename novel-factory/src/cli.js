@@ -63,12 +63,16 @@ run 옵션:
   --provider   <name>   openai | anthropic | mock            (기본 mock)
   --model      <id>     프로바이더 모델 ID 덮어쓰기
   --notes      <text>   추가 지침 (수위, 금기, 톤 등)
+  --style      <text>   문체 지시 (예: "짧고 건조한 문장, 은유 절제, 대사 위주")
+  --trend      <path>   트렌드 자료 파일 (직접 모은 공개 메타데이터). "auto" 면 자료 없이 추정
   --no-research         리서치 단계 생략
   --project    <id>     기존 프로젝트 ID 로 이어서 진행
   --quiet               로그 최소화
 
 예시:
   node src/cli.js run --idea "기억을 파는 대가로 마력을 얻는 소년" --preset webnovel --chapters 3
+  node src/cli.js run --idea "몰락한 변방 영지를 물려받은 전생자" --preset estate --chapters 6 \\
+                      --style "짧고 건조한 문장, 숫자는 감각과 함께" --trend trend.md
   OPENAI_API_KEY=sk-... node src/cli.js run --idea "..." --provider openai --model gpt-4o
 `);
 }
@@ -100,6 +104,19 @@ async function cmdRun(args) {
     file: path.join(cfg.workspaceRoot, 'factory.log'),
   });
 
+  // 트렌드 자료: --trend <파일경로> 로 사용자가 직접 모은 공개 메타데이터를 넣거나,
+  // --trend auto 로 자료 없이 모델 내재 지식 추정을 쓴다(추정임이 결과에 명시된다).
+  let trendData = '';
+  const trendArg = args.trend;
+  if (trendArg && trendArg !== true && trendArg !== 'auto') {
+    const tp = path.resolve(process.cwd(), String(trendArg));
+    if (!fs.existsSync(tp)) {
+      console.error(`트렌드 자료 파일을 찾을 수 없습니다: ${tp}`);
+      process.exit(1);
+    }
+    trendData = fs.readFileSync(tp, 'utf8');
+  }
+
   const brief = {
     idea: String(args.idea),
     preset,
@@ -108,6 +125,9 @@ async function cmdRun(args) {
     passScore: Number(args.pass || g.passScore),
     notes: args.notes && args.notes !== true ? String(args.notes) : '',
     research: !args['no-research'],
+    trend: !!trendArg,
+    trendData,
+    style: args.style && args.style !== true ? String(args.style) : '',
   };
 
   logger.info(`provider=${cfg.llm.provider} model=${cfg.llm.providers[cfg.llm.provider].model}`);

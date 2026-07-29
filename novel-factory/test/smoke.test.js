@@ -135,15 +135,16 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'novel-factory-'));
   test('모든 역할 프롬프트가 로드된다', () => {
     const roles = loadRoles();
     for (const code of ['PM', 'RESEARCHER', 'WORLDBUILDER', 'CHARACTER_DESIGNER', 'SYNOPSIS_WRITER',
-      'OUTLINER', 'WRITER_1', 'REVIEWER', 'CRITIC', 'WRITER_2', 'CONTINUITY_KEEPER', 'EDITOR']) {
+      'OUTLINER', 'WRITER_1', 'REVIEWER', 'CRITIC', 'WRITER_2', 'CONTINUITY_KEEPER', 'POLISHER', 'EDITOR']) {
       assert.ok(roles[code], `역할 누락: ${code}`);
       assert.ok(roles[code].prompt.length > 100, `프롬프트 부실: ${code}`);
     }
   });
-  test('장르 프리셋 3종이 로드된다', () => {
+  test('장르 프리셋 4종이 로드된다', () => {
     const g = loadGenres();
-    assert.ok(g.webnovel && g.romance && g.epic);
+    assert.ok(g.webnovel && g.romance && g.epic && g.estate);
     assert.strictEqual(typeof g.webnovel.passScore, 'number');
+    assert.ok(g.estate.prompt.includes('지표'), '영지물 팩에 지표 규약이 없음');
   });
 
   console.log('\n[6] 파서');
@@ -179,6 +180,31 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'novel-factory-'));
     const manuscript = fs.readFileSync(path.join(s.project_dir, 'MANUSCRIPT.md'), 'utf8');
     assert.ok(!manuscript.includes('HANDOFF_EVENT'), '원고에 핸드오프 블록이 섞여 있음');
     assert.ok(manuscript.length > 800, '원고가 비어 있음');
+  });
+
+  await test('영지 경영물 프리셋으로 전면 퇴고까지 수행한다', async () => {
+    const cfg = loadConfig({ llm: { provider: 'mock' } });
+    cfg.workspaceRoot = path.join(tmp, 'estate');
+    cfg.sessionStateRoot = path.join(tmp, 'estate', 'session_state');
+    const logger = new Logger({ quiet: true });
+    const orch = new Orchestrator({
+      cfg, logger,
+      brief: { idea: '몰락한 변방 영지를 물려받은 전생자', preset: 'estate', chapters: 3, targetChars: 1200, passScore: 81, research: false },
+    });
+    const s = await orch.run();
+
+    assert.ok(s.polish, '퇴고 리포트가 없음');
+    assert.ok(s.polish.touched_chapters.length >= 1, '퇴고 대상 회차가 지정되지 않음');
+    assert.ok(fs.existsSync(path.join(s.project_dir, 'reports', 'polish-diagnosis.json')), '퇴고 진단서 없음');
+
+    const diag = JSON.parse(fs.readFileSync(path.join(s.project_dir, 'reports', 'polish-diagnosis.json'), 'utf8'));
+    assert.ok(diag.overall_read, '통독 인상이 비어 있음');
+    assert.ok(Array.isArray(diag.unresolved_foreshadow), '미회수 복선 추적 누락');
+    for (const d of diag.chapter_directives) {
+      assert.ok(Array.isArray(d.keep), `${d.no}화 퇴고 지시에 keep 이 없음 — 장점이 지워질 위험`);
+    }
+    // 퇴고본이 백업을 남기고 덮어썼는지
+    assert.ok(fs.existsSync(path.join(s.project_dir, '.cache', 'backups')), '퇴고 전 백업이 없음');
   });
 
   await test('재개(resume) 시 완료 단계를 건너뛴다', async () => {

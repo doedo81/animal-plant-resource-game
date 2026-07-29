@@ -38,7 +38,8 @@
     "passScore": 82,
     "maxRevisions": 2,
     "minImprovementDelta": 3,
-    "escalateOnStall": true
+    "escalateOnStall": true,
+    "polishPass": true
   },
 
   "guard": {

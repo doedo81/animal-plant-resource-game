@@ -62,6 +62,62 @@ function mockRespond(req) {
         HANDOFF_EVENT: { ...base, summary: '역사·기술·경제 3개 축 고증 자료 정리, 제약 2건 도출' },
       }, null, 2);
 
+    case 'TREND_ANALYST':
+      return JSON.stringify({
+        market: m.genreLabel || '웹소설',
+        source: m.hasData ? '관측자료' : '내재지식',
+        knowledge_cutoff_warning: m.hasData ? '' : '최신 관측 자료 없이 내재 지식으로 추정함. 실제 순위 데이터로 재검증 필요.',
+        winning_codes: [
+          { code: '즉시 보상', why_it_works: '독자는 1화에 시간을 투자할 이유를 찾는다', how_to_apply: '1화 안에 주인공이 무언가를 실제로 얻게 하라. 예고가 아니라 획득이어야 한다.' },
+          { code: '명확한 규칙', why_it_works: '규칙이 있어야 독자가 다음 수를 예측하며 참여한다', how_to_apply: '능력의 비용과 한계를 2화 안에 독자에게 완전히 공개하라.' },
+          { code: '수치화된 성장', why_it_works: '성장을 셀 수 있으면 몰입이 유지된다', how_to_apply: '회차마다 무엇이 얼마나 늘었는지 한 줄로 확인시켜라.' },
+        ],
+        saturation: ['회귀 그 자체', '먼치킨 각성', '아카데미 입학'],
+        avoid_list: ['설명으로 여는 1화', '3화까지 능력이 안 나오는 전개', '주인공이 당하기만 하는 구간 2회 연속'],
+        title_formula: [
+          { pattern: '[상태] + [직업/신분]', hook_principle: '결핍과 역할을 동시에 제시', example_shape: '몰락한 OO의 OO' },
+          { pattern: '[숫자] + [단위] + [행위]', hook_principle: '제약이 곧 후킹', example_shape: 'N번째 OO' },
+        ],
+        opening_pattern: '첫 300자 안에 결핍 제시, 1500자 안에 세계 규칙 노출, 3000자 안에 첫 획득과 다음 화 청구서',
+        pacing_norm: { chars_per_chapter: m.targetChars || 3000, cliffhanger_every: 1, payoff_cycle: '고구마는 1회차 이내에 해소' },
+        reader_contract: ['설정한 규칙을 작가가 어기지 않는다', '주인공의 성장이 멈추지 않는다'],
+        differentiation: [
+          '성장의 대가를 되돌릴 수 없게 만들어, 사이다에 쓴맛을 섞는다',
+          '조력자가 주인공의 성장을 반기지 않게 배치한다',
+        ],
+        HANDOFF_EVENT: { ...base, summary: `트렌드 규약 도출: 흥행 코드 3 / 회피 3 / 차별화 2 (${m.hasData ? '관측자료' : '내재지식 추정'})` },
+      }, null, 2);
+
+    case 'STYLE_ARCHITECT':
+      return JSON.stringify({
+        style_sheet: {
+          name: '건조한 장부체',
+          sentence: { avg_chars: 32, max_long_per_para: 1, rhythm: '짧게 셋, 길게 하나' },
+          paragraph: { lines: '2~6줄로 불균등하게', open_with: '행동 또는 감각', never: '설명으로 열지 않기' },
+          metaphor: { density: '문단당 최대 1개', source: '시점 인물이 실제로 아는 사물 — 저울, 동전, 곳간, 장부' },
+          dialogue: { ratio: '35~45%', tag_rule: '"말했다" 대신 행동 묘사로 대체', subtext: '하지 못한 말이 한 말보다 크게' },
+          emotion: '감정어 금지. 신체 반응·행동·회피로만 표현',
+          tense_pov: '3인칭 제한 시점, 과거형 고정',
+          signature_device: '중요한 순간마다 "값"과 "청구서"의 이미지가 되돌아온다',
+          forbidden_words: ['묘한', '알 수 없는', '정적이 흘렀다', '온몸에 전율', '~인 듯했다'],
+        },
+        character_voices: [
+          { name: '레이든', sentence_len: '짧게', ending: '~다 로 끊음', habit: '질문에 대답 대신 행동', avoid: '감탄사' },
+          { name: '세이라', sentence_len: '중간', ending: '~네, ~잖아', habit: '농담으로 진심을 가림', avoid: '직설적 고백' },
+          { name: '금고지기 훈', sentence_len: '길게', ending: '~습니다', habit: '존댓말로 위협', avoid: '반말' },
+        ],
+        ai_tells_to_avoid: [
+          '3요소 균형 나열 ("~하고, ~하며, ~했다")',
+          '모든 문단을 4~5줄로 균질하게 쓰기',
+          '문단을 정리 문장으로 닫기 ("그것이 시작이었다")',
+          '감정 직접 진술 ("그는 슬펐다")',
+          '"마치 ~처럼" 남발',
+          '대사가 다 말한 것을 지문이 또 설명하기',
+        ],
+        sample_paragraph: '저울이 기울었다. 레이든은 그것을 소리로 먼저 알았다. 금고지기가 장부를 덮었다. 덮는 소리가 유난히 두꺼웠다. 그는 손바닥을 폈다가, 아무 말 없이 다시 오므렸다.',
+        HANDOFF_EVENT: { ...base, summary: '문체 시트 확정: 건조한 장부체 — 수치 규칙 7항, AI 문체 금지 6항, 인물 목소리 3인' },
+      }, null, 2);
+
     case 'WORLDBUILDER':
       return JSON.stringify({
         world: {
@@ -220,6 +276,31 @@ function mockRespond(req) {
         },
         HANDOFF_EVENT: { ...base, summary: '연속성 점검 통과, 캐논 2건·미회수 복선 2건 갱신' },
       }, null, 2);
+
+    case 'POLISHER': {
+      const n = m.chapters || 2;
+      return JSON.stringify({
+        overall_read: '전반적으로 대가율이라는 축이 일관되게 유지된다. 다만 세이라의 이해관계가 끝까지 흐릿하고, "저울" 계열 비유가 회차를 건너 반복된다. 1화가 약속한 질문 — 기억을 다 팔면 나는 누구인가 — 이 중반에 잠시 사라진다.',
+        unresolved_foreshadow: [
+          { planted_in: 1, what: '장부 속 어머니의 이름', suggestion: `${n}화 후반에 최소 한 줄 언급해 살려둘 것` },
+        ],
+        repetition: [
+          { pattern: '저울이 기울었다 계열 비유', chapters: Array.from({ length: n }, (_, i) => i + 1), fix: '2화 이후는 무게 대신 소리/냄새 감각으로 교체' },
+        ],
+        voice_drift: [
+          { character: '세이라', issue: '초반은 농담조, 후반은 설명조', fix: '후반 대사에 농담 한 겹 씌우기' },
+        ],
+        chapter_directives: Array.from({ length: Math.min(n, 2) }, (_, i) => ({
+          no: i + 1,
+          must_fix: i === 0
+            ? ['첫 문단에 이 작품이 무엇을 약속하는지 드러나는 이미지 1개 추가']
+            : ['세이라의 이해관계를 암시하는 한 줄 삽입', '저울 비유를 다른 감각으로 교체'],
+          keep: i === 0 ? ['마지막 "청구서" 문장'] : ['금고지기의 존댓말 위협'],
+        })),
+        structural_risk: [],
+        HANDOFF_EVENT: { ...base, summary: `전 ${n}회차 통독 완료 — 퇴고 대상 ${Math.min(n, 2)}개 회차 지정`, next_action: 'EDITOR 는 회차별 지시를 반영하라.' },
+      }, null, 2);
+    }
 
     case 'EDITOR': {
       const src = m.sourceText || '';

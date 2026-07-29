@@ -3,9 +3,12 @@
 한 줄 아이디어를 넣으면 **PM → 팀장 → 팀원** 조직이 릴레이로 작품을 만들어 납품하는 다중 에이전트 시스템.
 
 ```
-아이디어 한 줄  →  리서치 → 세계관 → 인물 → 시놉시스 → 회차구성
+아이디어 한 줄  →  리서치 → 트렌드 분석 → 세계관 → 인물 → 시놉시스
+                 → 문체 설계 → 회차구성
                  → [작가1 초고 → 검토 → 비평 → 작가2 개고] × 회차 반복
-                 → 연속성 점검 → 윤문 → PM 승인 → 원고 납품
+                 → 연속성 점검 → 회차 윤문
+                 → 전면 퇴고 (전체 통독 → 회차별 재손질)
+                 → PM 승인 → 원고 납품
 ```
 
 사람이 하는 일은 **아이디어를 주는 것**과 **완성본을 받는 것** 둘뿐이다.
@@ -44,9 +47,10 @@ node src/cli.js run \
 ## 명령어
 
 ```bash
-node src/cli.js run --idea "..." [--preset webnovel|romance|epic] [--chapters n]
+node src/cli.js run --idea "..." [--preset webnovel|romance|estate|epic] [--chapters n]
                     [--chars n] [--pass n] [--provider openai|anthropic|mock]
                     [--model id] [--notes "수위/톤/금기"] [--no-research]
+                    [--style "문체 지시"] [--trend <파일|auto>]
 node src/cli.js resume <projectId>    # 중단점에서 재개 (완료 단계는 건너뜀)
 node src/cli.js status <projectId>    # 진행 상황·회차 점수·컨텍스트 사용률
 node src/cli.js bus    <projectId>    # 에이전트 간 대화 흐름을 눈으로 확인
@@ -59,6 +63,7 @@ node src/cli.js presets               # 작가 유형 목록
 |---|---|---|
 | `webnovel` | 연재형 웹소설. 회차 클리프행어, 고구마 금지, 짧은 문단 | 5화 / 3,000자 / 통과선 80 |
 | `romance` | 감정선이 곧 플롯. 오해 갈등 금지, 양쪽 시점 | 5화 / 3,500자 / 통과선 82 |
+| `estate` | 영지 경영물. 문제→진단→정책→수치 4단, 정책마다 비용·부작용 | 6화 / 3,500자 / 통과선 81 |
 | `epic` | 장편 문예 판타지. 밀도와 여운, 상징 변주 | 4장 / 6,000자 / 통과선 85 |
 
 **새 작가 유형 추가는 파일 하나면 된다.** `prompts/genres/<이름>.md` 를 만들고 frontmatter에
@@ -74,6 +79,14 @@ node src/cli.js presets               # 작가 유형 목록
 | [docs/HANDOFF_SPEC.md](docs/HANDOFF_SPEC.md) | 핸드오프 규격 + 버스 프로토콜 + **JSON 메시지 예시** |
 | [docs/CONTROL.md](docs/CONTROL.md) | **모델(ChatGPT)을 어떻게 통제·감시하는가** — 7겹 통제 장치 |
 | [docs/PROMPTS.md](docs/PROMPTS.md) | PM / 팀장·팀원 공통 / 역할별 시스템 프롬프트 전문 |
+
+## 문체 · 트렌드 · 퇴고
+
+| 기능 | 하는 일 |
+|---|---|
+| **문체 설계** (`STYLE_ARCHITECT`) | AI 티가 나는 이유는 회차마다 문체가 흔들려서다. 문장 평균 길이·은유 밀도·대사 비율·금지어·인물별 말투를 **수치와 규칙으로** 확정해 모든 집필 역할에 주입한다. 한국어 생성 텍스트의 흔한 흔적(3요소 나열, 균질한 문단, 정리 문장으로 닫기, 감정 직접 진술)을 금지 목록으로 명시한다. |
+| **트렌드 분석** (`TREND_ANALYST`) | 본문을 긁지 않는다. 사용자가 직접 모은 공개 메타데이터(`--trend <파일>`, [템플릿](templates/trend-input.md))를 분석해 흥행 코드를 **작가 실행 문장**으로 번역한다. 트렌드 복제는 게이트에서 반려된다 — `differentiation`(비틀 지점)이 없으면 통과하지 못한다. 자료 없이 `--trend auto` 로 돌리면 추정임이 결과와 실행 요약에 명시된다. |
+| **전면 퇴고** (`POLISHER`) | 회차별 검토는 회차 안만 본다. 전 회차를 통독해야 보이는 것 — 미회수 복선, 회차를 건너뛴 비유 반복, 인물 말투의 표류, 감정선 낙차 — 을 잡아 회차별 퇴고 지시를 내리고, 지시가 있는 회차만 다시 다듬는다. |
 
 ## 설계상의 핵심 결정 3가지
 

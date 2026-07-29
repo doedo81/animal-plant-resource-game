@@ -22,6 +22,8 @@ const ACTORS = [
   'LEAD_RESEARCH',   // 리서치 팀장 (역사/고증/자료)
   // 팀원
   'RESEARCHER',
+  'TREND_ANALYST',
+  'STYLE_ARCHITECT',
   'WORLDBUILDER',
   'CHARACTER_DESIGNER',
   'SYNOPSIS_WRITER',
@@ -31,6 +33,7 @@ const ACTORS = [
   'CRITIC',
   'WRITER_2',
   'CONTINUITY_KEEPER',
+  'POLISHER',
   'EDITOR',
 ];
 

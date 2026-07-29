@@ -56,7 +56,8 @@ class Orchestrator {
     });
 
     this.canon = {
-      research: null, world: null, characters: null, synopsis: null, outline: null,
+      research: null, trend: null, style: null,
+      world: null, characters: null, synopsis: null, outline: null,
       established_facts: [], open_threads: [],
     };
 
@@ -111,6 +112,30 @@ class Orchestrator {
     }
     if (c.synopsis?.logline) lines.push(`- 로그라인: ${c.synopsis.logline}`);
     if (c.research?.constraints) lines.push(`- 창작 제약: ${(c.research.constraints || []).join(' / ')}`);
+    if (c.trend) {
+      const t = c.trend;
+      if (t.winning_codes?.length) lines.push(`- 흥행 코드: ${t.winning_codes.map((w) => w.how_to_apply || w.code).join(' / ')}`);
+      if (t.avoid_list?.length) lines.push(`- 회피(구식): ${t.avoid_list.join(' / ')}`);
+      if (t.differentiation?.length) lines.push(`- 차별화 지점: ${t.differentiation.join(' / ')}`);
+    }
+    if (c.style?.style_sheet) {
+      const s = c.style.style_sheet;
+      lines.push('- 문체 시트 (전 집필 역할 준수):');
+      lines.push(`  · 문장: 평균 ${s.sentence?.avg_chars || '-'}자, 리듬 ${s.sentence?.rhythm || '-'}`);
+      lines.push(`  · 문단: ${s.paragraph?.lines || '-'} / ${s.paragraph?.open_with || '-'}(으)로 열기`);
+      lines.push(`  · 은유: ${s.metaphor?.density || '-'} (${s.metaphor?.source || '-'})`);
+      lines.push(`  · 대사: ${s.dialogue?.ratio || '-'}, ${s.dialogue?.tag_rule || '-'}`);
+      lines.push(`  · 감정: ${s.emotion || '-'}`);
+      if (s.signature_device) lines.push(`  · 반복 장치: ${s.signature_device}`);
+      if (s.forbidden_words?.length) lines.push(`  · 금지어: ${s.forbidden_words.join(', ')}`);
+      if (c.style.ai_tells_to_avoid?.length) {
+        lines.push(`  · AI 문체 금지: ${c.style.ai_tells_to_avoid.join(' / ')}`);
+      }
+      for (const v of (c.style.character_voices || []).slice(0, 6)) {
+        lines.push(`  · 목소리 ${v.name}: ${[v.sentence_len, v.ending, v.habit].filter(Boolean).join(', ')} (회피: ${v.avoid || '-'})`);
+      }
+      if (c.style.sample_paragraph) lines.push(`  · 기준 예시: ${truncate(c.style.sample_paragraph, 400)}`);
+    }
     if (c.established_facts.length) lines.push(`- 확정 사실: ${c.established_facts.slice(-12).join(' / ')}`);
     if (c.open_threads.length) lines.push(`- 미회수 복선: ${c.open_threads.slice(-8).join(' / ')}`);
     return lines.join('\n');
@@ -135,6 +160,27 @@ class Orchestrator {
       case 'RESEARCHER':
         if (!(d?.findings?.length >= 1)) reasons.push('검증 가능한 조사 결과가 없음');
         if (!(d?.constraints?.length >= 1)) reasons.push('창작 제약이 도출되지 않음');
+        break;
+      case 'TREND_ANALYST':
+        if (!(d?.winning_codes?.length >= 1)) reasons.push('흥행 코드가 도출되지 않음');
+        if (!(d?.differentiation?.length >= 1)) reasons.push('차별화 지점 없음 — 트렌드 복제는 반려');
+        for (const w of (d?.winning_codes || [])) {
+          if (!w.how_to_apply) reasons.push(`흥행 코드 "${w.code || '?'}" 에 작가 실행 문장이 없음`);
+        }
+        break;
+      case 'STYLE_ARCHITECT': {
+        const s = d?.style_sheet;
+        if (!s) reasons.push('문체 시트 없음');
+        if (s && !s.sentence?.avg_chars) reasons.push('문장 길이가 수치로 지정되지 않음 (형용사 문체는 반려)');
+        if (!(d?.ai_tells_to_avoid?.length >= 3)) reasons.push('AI 문체 금지 목록이 3개 미만');
+        if (!d?.sample_paragraph) reasons.push('기준 예시 문단 없음');
+        break;
+      }
+      case 'POLISHER':
+        if (!Array.isArray(d?.chapter_directives)) reasons.push('회차별 퇴고 지시가 배열이 아님');
+        for (const dir of (d?.chapter_directives || [])) {
+          if (!Array.isArray(dir.keep)) reasons.push(`${dir.no}화 지시에 keep 누락 — 장점이 지워질 위험`);
+        }
         break;
       case 'WORLDBUILDER': {
         const ms = d?.world?.magic_system;
@@ -227,13 +273,15 @@ class Orchestrator {
   }
 
   _remainingStages() {
-    const all = ['research', 'world', 'characters', 'synopsis', 'outline', 'chapters', 'final'];
+    const all = ['research', 'trend', 'world', 'characters', 'synopsis', 'style', 'outline', 'chapters', 'polish', 'final'];
     return all.filter((s) => !this.state.completed[s]);
   }
 
   /** 캐논 산출물을 다시 읽어 메모리에 복원 (resume 시) */
   _rehydrate() {
     this.canon.research = readJson(path.join(this.projectDir, 'canon/research.json'), null);
+    this.canon.trend = readJson(path.join(this.projectDir, 'canon/trend.json'), null);
+    this.canon.style = readJson(path.join(this.projectDir, 'canon/style.json'), null);
     this.canon.world = readJson(path.join(this.projectDir, 'canon/world.json'), null);
     this.canon.characters = readJson(path.join(this.projectDir, 'canon/characters.json'), null);
     this.canon.synopsis = readJson(path.join(this.projectDir, 'canon/synopsis.json'), null);
@@ -269,6 +317,30 @@ class Orchestrator {
       this.logger.ok(`리서치 완료 → ${r.path}`);
     } else if (this.state.completed.research) {
       this.logger.ok('리서치 단계 건너뜀 (이미 완료)');
+    }
+
+    // ── 1.5 트렌드 분석 ──────────────────────────────────────
+    // 본문 크롤링은 하지 않는다. 사용자가 합법적으로 모은 공개 메타데이터(--trend 파일)를
+    // 넣으면 그걸 분석하고, 없으면 모델 내재 지식으로 추정하되 그 사실을 명시하게 한다.
+    if (!this.state.completed.trend && b.trend) {
+      this.logger.stage('1.5단계 · 트렌드 분석 (LEAD_RESEARCH)');
+      const observed = b.trendData
+        ? truncate(b.trendData, 20000)
+        : '(관측 자료 없음 — 내재 지식으로 추정하고 knowledge_cutoff_warning 에 명시할 것)';
+      const r = await this._delegate('TREND_ANALYST', {
+        stageKey: 'trend',
+        task: `${this.genre.label} 시장의 현재 트렌드를 분석해 창작 규약으로 번역하라. 흥행 코드를 그대로 복제하지 말고 비틀 지점을 반드시 제안하라.`,
+        inputs: { 아이디어: b.idea, 관측_자료: observed, 장르: this.genre.label },
+        meta: { idea: b.idea, hasData: !!b.trendData },
+        outFile: 'canon/trend.json',
+      });
+      this.canon.trend = r.data;
+      this.state.completed.trend = r.path; this._save();
+      if (r.data?.knowledge_cutoff_warning) {
+        this.logger.warn(`트렌드 분석 주의: ${r.data.knowledge_cutoff_warning}`);
+        this.report.escalations.push({ stage: 'trend', reason: '최신 관측 자료 없이 내재 지식으로 추정됨', action: 'REVIEW_RECOMMENDED' });
+      }
+      this.logger.ok(`트렌드 분석 완료 → ${r.path}`);
     }
 
     // ── 2. 세계관 ────────────────────────────────────────────
@@ -316,6 +388,29 @@ class Orchestrator {
       this.logger.ok(`시놉시스 완료 → ${r.path}`);
     }
 
+    // ── 4.5 문체 설계 ────────────────────────────────────────
+    // 회차마다 다른 사람이 쓴 것처럼 읽히는 것이 AI 티가 나는 가장 큰 이유다.
+    // 여기서 만든 문체 시트가 캐논에 실려 작가1·작가2·윤문 전부에게 매 호출 주입된다.
+    if (!this.state.completed.style) {
+      this.logger.stage('4.5단계 · 문체 설계 (LEAD_WRITING)');
+      const r = await this._delegate('STYLE_ARCHITECT', {
+        stageKey: 'style',
+        task: '이 작품만의 문체 시트를 만들어라. 형용사가 아니라 검토자가 위반을 셀 수 있는 수치와 규칙으로 쓰고, AI 문체 습관 금지 목록과 기준 예시 문단을 반드시 포함하라.',
+        inputs: {
+          아이디어: b.idea,
+          시놉시스: this.canon.synopsis,
+          인물: this.canon.characters,
+          사용자_문체_지시: b.style || '(지정 없음 — 작품에 맞게 스스로 설계하라)',
+          트렌드_규약: this.canon.trend?.reader_contract,
+        },
+        meta: { idea: b.idea, styleHint: b.style },
+        outFile: 'canon/style.json',
+      });
+      this.canon.style = r.data;
+      this.state.completed.style = r.path; this._save();
+      this.logger.ok(`문체 시트 확정 → ${r.path} (${r.data?.style_sheet?.name || '무명'})`);
+    }
+
     // ── 5. 아웃라인 ──────────────────────────────────────────
     if (!this.state.completed.outline) {
       this.logger.stage('5단계 · 회차 구성 (LEAD_STORY → LEAD_WRITING)');
@@ -347,9 +442,16 @@ class Orchestrator {
     }
     this.state.completed.chapters = true; this._save();
 
-    // ── 7. 최종 조립 + PM 승인 ───────────────────────────────
+    // ── 7. 전면 퇴고 ─────────────────────────────────────────
+    // 회차별 검토는 회차 안에서만 본다. 전체를 한 덩어리로 읽어야 보이는 것을 여기서 잡는다.
+    if (this.cfg.quality.polishPass !== false && !this.state.completed.polish) {
+      await this._polishPass(chapters);
+      this.state.completed.polish = true; this._save();
+    }
+
+    // ── 8. 최종 조립 + PM 승인 ───────────────────────────────
     const manuscriptPath = this._assemble(chapters);
-    this.logger.stage('7단계 · PM 최종 승인');
+    this.logger.stage('8단계 · PM 최종 승인');
     this._route('LEAD_WRITING', 'PM', '전 회차 최종고 취합 완료', '최종 승인 판정 요청', manuscriptPath);
     this.bus.drain('PM', '최종 승인 심사 착수');
 
@@ -376,6 +478,7 @@ class Orchestrator {
       manuscript: manuscriptPath,
       pm_report: pmResult.path,
       chapters: this.report.chapters,
+      polish: this.report.polish || null,
       escalations: this.report.escalations,
       compliance_violations: this.runner.violations,
       bus: this.bus.stats(),
@@ -515,6 +618,96 @@ class Orchestrator {
       path: final.path,
       continuity_ok: cont.data?.ok !== false,
     };
+  }
+
+  /**
+   * 전면 퇴고 — 전 회차를 통독하고 회차별 퇴고 지시를 내린 뒤, 지시가 있는 회차만 다시 다듬는다.
+   *
+   * 회차 루프의 개고(WRITER_2)와는 목적이 다르다.
+   *   개고 = 이 회차가 기준을 넘는가          (회차 안에서만 본다)
+   *   퇴고 = 전체가 한 작품으로 읽히는가       (회차를 건너서 본다)
+   * 미회수 복선, 반복되는 비유, 인물 말투의 표류는 전자로는 절대 안 잡힌다.
+   */
+  async _polishPass(chapters) {
+    this.logger.stage('7단계 · 전면 퇴고 (LEAD_WRITING)');
+
+    const fullText = chapters.map((ch) => {
+      const key = `ch${pad(ch.no)}`;
+      return this.guard.read(`chapters/${key}.final.md`, '');
+    }).join('\n\n---\n\n');
+
+    const diag = await this._delegate('POLISHER', {
+      stageKey: 'polish:diagnose',
+      task: '전 회차를 통독하고 회차별 퇴고 지시를 작성하라. 회차 단위 검토가 놓친 것 — 미회수 복선, 반복, 인물 말투 표류, 감정선 낙차 — 을 잡는 것이 목적이다.',
+      inputs: {
+        전체_원고: truncate(fullText, 60000),
+        캐논: this.canonSummary(),
+        미회수_복선: this.canon.open_threads,
+        회차_점수: this.report.chapters.map((c) => ({ no: c.no, score: c.finalScore })),
+      },
+      meta: { idea: this.brief.idea, chapters: chapters.length },
+      outFile: 'reports/polish-diagnosis.json',
+      receiver: 'EDITOR',
+    });
+
+    const directives = diag.data?.chapter_directives || [];
+    this.report.polish = {
+      overall_read: diag.data?.overall_read || '',
+      unresolved_foreshadow: diag.data?.unresolved_foreshadow || [],
+      repetition: diag.data?.repetition || [],
+      structural_risk: diag.data?.structural_risk || [],
+      touched_chapters: directives.map((d) => d.no),
+    };
+
+    if (diag.data?.structural_risk?.length) {
+      this.report.escalations.push({
+        stage: 'polish', reason: '구조 수준의 문제 지적됨', detail: diag.data.structural_risk, action: 'NEEDS_HUMAN',
+      });
+      this.bus.publish(makeHandoff({
+        trace_id: this.projectId, sender: 'LEAD_WRITING', receiver: 'PM', status: 'NEEDS_HUMAN',
+        summary: `퇴고 단계에서 구조적 문제 발견: ${diag.data.structural_risk.join(' / ')}`,
+        next_action: '사용자 판단 필요: 구조 변경은 개고 범위를 넘는다',
+        data_payload_path: 'reports/polish-diagnosis.json',
+      }));
+    }
+
+    if (!directives.length) {
+      this.logger.ok('퇴고 지시 없음 — 전 회차 통과');
+      return;
+    }
+
+    this.logger.info(`퇴고 대상 ${directives.length}개 회차: ${directives.map((d) => `${d.no}화`).join(', ')}`);
+
+    for (const d of directives) {
+      const ch = chapters.find((c) => c.no === d.no);
+      if (!ch) continue;
+      const key = `ch${pad(d.no)}`;
+      const before = this.guard.read(`chapters/${key}.final.md`, '');
+      if (!before) continue;
+
+      await this._delegate('EDITOR', {
+        stageKey: `polish:${key}`,
+        task: `제${d.no}화에 전면 퇴고 지시를 반영하라. must_fix 는 전부 적용하고 keep 은 절대 건드리지 마라. 사건과 설정은 바꾸지 않는다.`,
+        inputs: {
+          원고: before,
+          퇴고_지시: d,
+          전체_통독_인상: diag.data?.overall_read,
+          반복_지적: (diag.data?.repetition || []).filter((r) => (r.chapters || []).includes(d.no)),
+        },
+        meta: { idea: this.brief.idea, chapterNo: d.no, chapterTitle: ch.title, sourceText: before },
+        outFile: `chapters/${key}.final.md`,
+        receiver: 'PM',
+      });
+
+      const after = this.guard.read(`chapters/${key}.final.md`, '');
+      const entry = this.state.chapters[key];
+      if (entry) {
+        entry.polished = true;
+        entry.chars = countChars(after);
+      }
+      this.logger.ok(`${key} 퇴고 반영 (${countChars(before)}자 → ${countChars(after)}자)`);
+    }
+    this._save();
   }
 
   _prevSummary(no) {
