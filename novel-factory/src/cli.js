@@ -65,7 +65,8 @@ run 옵션:
   --provider   <name>   openai | anthropic | mock            (기본 mock)
   --model      <id>     프로바이더 모델 ID 덮어쓰기
   --notes      <text>   추가 지침 (수위, 금기, 톤 등)
-  --style      <text>   문체 지시 (예: "짧고 건조한 문장, 은유 절제, 대사 위주")
+  --style      <text>   문체 지시 한 줄 (예: "짧고 건조한 문장, 은유 절제")
+  --style-file <path>   문체 연구 문서 — 정리해 둔 분석 자료를 문체 시트로 번역해 적용
   --trend      <path>   트렌드 자료 파일 (직접 모은 공개 메타데이터). "auto" 면 자료 없이 추정
   --no-research         리서치 단계 생략
   --project    <id>     기존 프로젝트 ID 로 이어서 진행
@@ -124,6 +125,18 @@ async function cmdRun(args) {
     trendData = fs.readFileSync(tp, 'utf8');
   }
 
+  // 문체 연구 자료: --style-file <경로> 로 사용자가 정리한 문체 분석 문서를 넣으면
+  // STYLE_ARCHITECT 가 그것을 수치 규칙(문체 시트)으로 번역해 전 집필 역할에 주입한다.
+  let styleData = '';
+  if (args['style-file'] && args['style-file'] !== true) {
+    const sp = path.resolve(process.cwd(), String(args['style-file']));
+    if (!fs.existsSync(sp)) {
+      console.error(`문체 연구 파일을 찾을 수 없습니다: ${sp}`);
+      process.exit(1);
+    }
+    styleData = fs.readFileSync(sp, 'utf8');
+  }
+
   const brief = {
     idea: String(args.idea),
     preset,
@@ -135,6 +148,7 @@ async function cmdRun(args) {
     trend: !!trendArg,
     trendData,
     style: args.style && args.style !== true ? String(args.style) : '',
+    styleData,
   };
 
   logger.info(`provider=${cfg.llm.provider} model=${cfg.llm.providers[cfg.llm.provider].model}`);
@@ -188,6 +202,8 @@ async function cmdBatch(args) {
       passScore: Number(job.pass || g.passScore),
       notes: job.notes || '',
       style: job.style || '',
+      styleData: job.styleFile && fs.existsSync(path.resolve(process.cwd(), job.styleFile))
+        ? fs.readFileSync(path.resolve(process.cwd(), job.styleFile), 'utf8') : '',
       research: job.research !== false,
       trend: !!job.trend,
       trendData: '',

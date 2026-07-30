@@ -407,6 +407,9 @@ class Orchestrator {
           시놉시스: this.canon.synopsis,
           인물: this.canon.characters,
           사용자_문체_지시: b.style || '(지정 없음 — 작품에 맞게 스스로 설계하라)',
+          문체_연구자료: b.styleData
+            ? truncate(b.styleData, 12000)
+            : undefined,
           트렌드_규약: this.canon.trend?.reader_contract,
         },
         meta: { idea: b.idea, styleHint: b.style },
