@@ -79,6 +79,7 @@ node src/cli.js presets               # 작가 유형 목록
 | [docs/HANDOFF_SPEC.md](docs/HANDOFF_SPEC.md) | 핸드오프 규격 + 버스 프로토콜 + **JSON 메시지 예시** |
 | [docs/CONTROL.md](docs/CONTROL.md) | **모델(ChatGPT)을 어떻게 통제·감시하는가** — 7겹 통제 장치 |
 | [docs/PROMPTS.md](docs/PROMPTS.md) | PM / 팀장·팀원 공통 / 역할별 시스템 프롬프트 전문 |
+| [docs/DISCORD_PLAN.md](docs/DISCORD_PLAN.md) | **헤르메스 발주서** — 디스코드를 조종석으로 만드는 연동 계획 (ChatGPT에게 주는 문서) |
 
 ## 문체 · 트렌드 · 퇴고
 
