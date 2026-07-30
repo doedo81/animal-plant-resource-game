@@ -52,6 +52,7 @@ ${COLOR.bold}소설 공장 (Novel Factory) — 다중 에이전트 자동 집필
   node src/cli.js resume <projectId>
   node src/cli.js status <projectId>
   node src/cli.js bus <projectId> [건수]
+  node src/cli.js clean <projectId> [--all] --yes   납품 후 중간 파일 정리
   node src/cli.js presets
   node src/cli.js doctor
 
@@ -285,6 +286,79 @@ function cmdBus(args) {
   }
 }
 
+/**
+ * clean — 납품이 끝난 프로젝트의 중간 산출물을 지운다.
+ *
+ * 파일을 남기는 이유는 재개(resume)와 감사 때문이다. 납품이 끝나 둘 다 필요 없어졌다면
+ * 지워도 된다. 다만 지우고 나면 그 프로젝트는 재개할 수 없다 — 되돌릴 수 없는 작업이라
+ * 무엇을 지우고 무엇을 남기는지 먼저 보여주고 --yes 가 있을 때만 실행한다.
+ */
+function cmdClean(args) {
+  const projectId = args._[1];
+  const cfg = loadConfig();
+  if (!projectId) {
+    console.error('projectId 를 지정하세요. (전체 목록: ls ' + cfg.workspaceRoot + ')');
+    process.exit(1);
+  }
+  const dir = path.join(cfg.workspaceRoot, projectId);
+  if (!fs.existsSync(path.join(dir, 'state.json'))) {
+    console.error(`프로젝트를 찾을 수 없습니다: ${dir}`);
+    process.exit(1);
+  }
+
+  const hard = !!args.all;
+  // 남길 것: 최종 원고, 최종고, 캐논, 보고서 (hard 모드면 원고만)
+  const keep = hard
+    ? ['MANUSCRIPT.md']
+    : ['MANUSCRIPT.md', 'state.json', 'brief.json', 'canon', 'reports'];
+  const keepChapterFinal = !hard;
+
+  const targets = [];
+  const walk = (rel) => {
+    const abs = path.join(dir, rel);
+    for (const name of fs.readdirSync(abs)) {
+      const childRel = rel ? `${rel}/${name}` : name;
+      if (!rel && keep.includes(name)) continue;
+      const childAbs = path.join(dir, childRel);
+      if (fs.statSync(childAbs).isDirectory()) {
+        if (rel === '' && name === 'chapters' && keepChapterFinal) { walk(childRel); continue; }
+        targets.push(childRel);
+      } else {
+        if (keepChapterFinal && /^chapters\/.*\.final\.md$/.test(childRel)) continue;
+        targets.push(childRel);
+      }
+    }
+  };
+  walk('');
+
+  let bytes = 0;
+  const size = (rel) => {
+    const abs = path.join(dir, rel);
+    const st = fs.statSync(abs);
+    if (!st.isDirectory()) return st.size;
+    let s = 0;
+    for (const n of fs.readdirSync(abs)) s += size(path.join(rel, n));
+    return s;
+  };
+  for (const t of targets) { try { bytes += size(t); } catch { /* 접근 불가는 건너뜀 */ } }
+
+  console.log(`\n${COLOR.bold}정리 대상: ${projectId}${COLOR.reset}`);
+  console.log(`모드      : ${hard ? '--all (최종 원고만 남김)' : '기본 (원고·캐논·보고서 유지)'}`);
+  console.log(`남길 것   : ${keep.join(', ')}${keepChapterFinal ? ', chapters/*.final.md' : ''}`);
+  console.log(`지울 것   : ${targets.length}개 항목, 약 ${(bytes / 1024).toFixed(0)}KB`);
+  console.log(`           ${targets.slice(0, 8).join(', ')}${targets.length > 8 ? ` 외 ${targets.length - 8}개` : ''}`);
+  console.log(`${COLOR.warn}주의      : 정리 후에는 이 프로젝트를 resume 할 수 없습니다.${COLOR.reset}`);
+
+  if (!args.yes) {
+    console.log(`\n실행하려면 --yes 를 붙이세요:\n  node src/cli.js clean ${projectId}${hard ? ' --all' : ''} --yes\n`);
+    return;
+  }
+  for (const t of targets) {
+    try { fs.rmSync(path.join(dir, t), { recursive: true, force: true }); } catch { /* 이미 없으면 통과 */ }
+  }
+  console.log(`\n${COLOR.ok}✔ 정리 완료 — ${(bytes / 1024).toFixed(0)}KB 회수${COLOR.reset}\n`);
+}
+
 function cmdPresets() {
   const genres = loadGenres();
   console.log(`\n${COLOR.bold}사용 가능한 작가 프리셋${COLOR.reset}`);
@@ -337,6 +411,7 @@ async function main() {
       case 'resume': await cmdResume(args); break;
       case 'status': cmdStatus(args); break;
       case 'bus': cmdBus(args); break;
+      case 'clean': cmdClean(args); break;
       case 'presets': cmdPresets(); break;
       case 'doctor': cmdDoctor(); break;
       default: usage();

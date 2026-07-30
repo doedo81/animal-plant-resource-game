@@ -46,16 +46,19 @@ class Orchestrator {
       projectId: this.projectId,
     });
 
+    // 호출 아카이브는 프롬프트·응답 전문을 디스크에 남긴다. 디버깅에는 유용하지만
+    // 개인정보·아이디어가 그대로 평문으로 쌓이므로 기본값은 꺼짐이다.
+    // 켜려면 config/local.json 에서 llm.archiveCalls: true.
     this.llm = new LLM(cfg.llm, {
       logger,
       budget: cfg.budget,
-      archive: (label, payload) => {
+      archive: cfg.llm.archiveCalls ? (label, payload) => {
         const safe = String(label).replace(/[^\w.#:-]/g, '_');
         try {
           this.guard.write(`.cache/calls/${Date.now()}-${safe}.txt`,
             `### SYSTEM\n${payload.system}\n\n### USER\n${payload.user}\n\n### OUTPUT\n${payload.output}\n`);
         } catch { /* 아카이브 실패는 본 작업을 막지 않는다 */ }
-      },
+      } : null,
     });
 
     this.canon = {

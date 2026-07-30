@@ -38,7 +38,7 @@ node src/cli.js batch templates/jobs.example.json
 ```bash
 cd novel-factory
 node src/cli.js doctor                       # 환경 점검
-node test/smoke.test.js                      # 21건 자체 검증
+node test/smoke.test.js                      # 23건 자체 검증
 
 # API 키 없이 전 구간 돌려보기 (mock 작가)
 node src/cli.js run --idea "기억을 파는 대가로 마력을 얻는 소년" --chapters 2
@@ -61,6 +61,9 @@ node src/cli.js run \
 | `reports/` | PM 최종 보고서, 실행 요약 |
 | `session_state/latest_summary.json` | 컨텍스트 리셋 후 재개용 체크포인트 |
 
+> **보안**: `workspace/` 를 구글드라이브·원드라이브 동기화 폴더 안에 두지 마세요.
+> 위치를 옮기는 법과 그 밖의 설정은 [docs/SETUP_PC.md](docs/SETUP_PC.md) 참고.
+
 ## 명령어
 
 ```bash
@@ -71,6 +74,7 @@ node src/cli.js run --idea "..." [--preset webnovel|romance|estate|epic] [--chap
 node src/cli.js resume <projectId>    # 중단점에서 재개 (완료 단계는 건너뜀)
 node src/cli.js status <projectId>    # 진행 상황·회차 점수·컨텍스트 사용률
 node src/cli.js bus    <projectId>    # 에이전트 간 대화 흐름을 눈으로 확인
+node src/cli.js clean  <projectId> --yes   # 납품 후 중간 파일 정리 (--all 이면 원고만 남김)
 node src/cli.js presets               # 작가 유형 목록
 ```
 
@@ -85,8 +89,8 @@ node src/cli.js presets               # 작가 유형 목록
 | `epic` | 장편 문예 판타지. 밀도와 여운, 상징 변주 | 4장 / 6,000자 / 통과선 85 |
 
 **새 작가 유형 추가는 파일 하나면 된다.** `prompts/genres/<이름>.md` 를 만들고 frontmatter에
-`preset / label / chapters / targetChars / passScore` 를 적으면 즉시 `--preset <이름>` 으로 잡힌다.
-코드는 건드리지 않는다. (예: 무협, 미스터리, 라이트노벨, SF)
+`preset / label / chapters / targetChars / passScore / studio` 를 적으면 즉시 `--preset <이름>` 으로 잡힌다.
+코드는 건드리지 않는다. (예: 무협, 미스터리, 라이트노벨)
 
 ## 문서
 
@@ -97,6 +101,7 @@ node src/cli.js presets               # 작가 유형 목록
 | [docs/HANDOFF_SPEC.md](docs/HANDOFF_SPEC.md) | 핸드오프 규격 + 버스 프로토콜 + **JSON 메시지 예시** |
 | [docs/CONTROL.md](docs/CONTROL.md) | **모델(ChatGPT)을 어떻게 통제·감시하는가** — 7겹 통제 장치 |
 | [docs/PROMPTS.md](docs/PROMPTS.md) | PM / 팀장·팀원 공통 / 역할별 시스템 프롬프트 전문 |
+| [docs/SETUP_PC.md](docs/SETUP_PC.md) | **내 PC에서 돌리기** — 설치, 클라우드 동기화 차단 등 보안 설정, 납품 후 정리 |
 | [docs/DISCORD_PLAN.md](docs/DISCORD_PLAN.md) | **헤르메스 발주서** — 디스코드를 조종석으로 만드는 연동 계획 (ChatGPT에게 주는 문서) |
 
 ## 문체 · 트렌드 · 퇴고

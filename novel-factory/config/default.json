@@ -4,6 +4,7 @@
 
   "llm": {
     "provider": "mock",
+    "archiveCalls": false,
     "timeoutMs": 180000,
     "maxRetries": 3,
     "backoffMs": [2000, 4000, 8000, 16000],
