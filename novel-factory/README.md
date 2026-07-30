@@ -35,6 +35,16 @@ node src/cli.js batch templates/jobs.example.json
 
 ## 빠른 시작
 
+**터미널이 싫다면** — 더블클릭으로 브라우저 대시보드가 뜹니다:
+- 윈도우: `소설공장-시작.bat` 더블클릭
+- 맥: `소설공장-시작.command` (최초 1회 우클릭→열기)
+- 또는 `node src/web.js` → http://127.0.0.1:8765
+
+브라우저에서 아이디어 입력 → 제작 시작 → 에이전트 릴레이를 실시간으로 구경 → 완성 원고 읽기.
+(대시보드는 이 컴퓨터에서만 열립니다 — 127.0.0.1 전용, 외부 접속 불가)
+
+**터미널이 편하다면**:
+
 ```bash
 cd novel-factory
 node src/cli.js doctor                       # 환경 점검
@@ -76,6 +86,7 @@ node src/cli.js status <projectId>    # 진행 상황·회차 점수·컨텍스�
 node src/cli.js bus    <projectId>    # 에이전트 간 대화 흐름을 눈으로 확인
 node src/cli.js clean  <projectId> --yes   # 납품 후 중간 파일 정리 (--all 이면 원고만 남김)
 node src/cli.js presets               # 작가 유형 목록
+node src/web.js                       # 웹 대시보드 (브라우저 UI)
 ```
 
 ## 작가 유형 (프리셋)

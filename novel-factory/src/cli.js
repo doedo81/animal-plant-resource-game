@@ -97,6 +97,11 @@ async function cmdRun(args) {
     overrides.llm.providers = { [args.provider || 'mock']: { model: String(args.model) } };
   }
   const cfg = loadConfig(overrides);
+  // 산출물 위치 오버라이드 (웹 UI·테스트가 사용). config/local.json 없이도 지정 가능.
+  if (args.workspace && args.workspace !== true) {
+    cfg.workspaceRoot = path.resolve(String(args.workspace));
+    cfg.sessionStateRoot = path.join(cfg.workspaceRoot, 'session_state');
+  }
 
   const projectId = args.project && args.project !== true ? String(args.project) : null;
   ensureDir(cfg.workspaceRoot);

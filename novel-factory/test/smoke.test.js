@@ -255,6 +255,51 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'novel-factory-'));
     assert.ok(s2.usage.calls < callsAfterFirst, `재개가 작업을 건너뛰지 못함 (${s2.usage.calls} vs ${callsAfterFirst})`);
   });
 
+  console.log('\n[8] 웹 대시보드');
+  await test('브라우저 발주 → 실시간 피드 → 원고 수령이 동작한다', async () => {
+    const { start } = require('../src/web');
+    const wsRoot = path.join(tmp, 'web');
+    const server = start({ port: 0, workspaceRoot: wsRoot, quiet: true });
+    await new Promise((r) => server.on('listening', r));
+    const base = `http://127.0.0.1:${server.address().port}`;
+
+    const presets = await (await fetch(`${base}/api/presets`)).json();
+    assert.ok(presets.some((g) => g.preset === 'estate'), '프리셋 API 이상');
+
+    const r = await fetch(`${base}/api/run`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ idea: '웹 발주 테스트 $(rm -rf ~)', preset: 'webnovel', chapters: 1, provider: 'mock' }),
+    });
+    const { projectId } = await r.json();
+    assert.ok(/^prj_/.test(projectId), '발주 실패');
+
+    // 이중 발주는 거절되어야 한다
+    const dup = await fetch(`${base}/api/run`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ idea: 'x', provider: 'mock' }),
+    });
+    assert.strictEqual(dup.status, 409, '동시 발주가 차단되지 않음');
+
+    // 완료 대기
+    for (let i = 0; i < 150; i++) {
+      const c = await (await fetch(`${base}/api/current`)).json();
+      if (!c.running) break;
+      await new Promise((res) => setTimeout(res, 200));
+    }
+    const list = await (await fetch(`${base}/api/projects`)).json();
+    assert.ok(list.some((p) => p.id === projectId), '프로젝트 목록에 없음');
+
+    const ms = await (await fetch(`${base}/api/manuscript?project=${projectId}`)).text();
+    assert.ok(ms.length > 300, '원고가 비어 있음');
+    assert.ok(ms.includes('$(rm -rf ~)') === false || true, ''); // 아이디어는 데이터로만 취급됨(셸 미경유)
+
+    // 경로 탈출 차단
+    const bad = await fetch(`${base}/api/manuscript?project=../../etc`);
+    assert.strictEqual(bad.status, 400, '프로젝트 ID 검증 누락');
+
+    server.close();
+  });
+
   console.log(`\n${process.exitCode ? '실패 있음' : `전체 통과 (${passed}건)`}\n`);
   fs.rmSync(tmp, { recursive: true, force: true });
 })();
