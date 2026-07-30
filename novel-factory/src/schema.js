@@ -15,7 +15,14 @@ const ACTORS = [
   'HUMAN',
   'PM',
   'BUS',
-  // 팀장
+  // 장르 스튜디오 팀장 — 각 장르의 제작 총괄. 산하 기능 팀을 조직하고 결과만 HUMAN 에게 보고한다.
+  'STUDIO_WEBNOVEL',  // 웹소설 팀장
+  'STUDIO_ROMANCE',   // 연애소설 팀장
+  'STUDIO_EPIC',      // 장편소설 팀장
+  'STUDIO_SF',        // 과학공상 팀장
+  'STUDIO_ESTATE',    // 영지경영 팀장
+  'STUDIO_LEAD',      // 커스텀 장르용 범용 팀장 (genres/*.md 에 studio 미지정 시)
+  // 스튜디오 내부 기능 팀장
   'LEAD_STORY',      // 스토리 팀장 (세계관/인물/시놉시스/플롯)
   'LEAD_WRITING',    // 집필 팀장 (작가1/작가2/윤문)
   'LEAD_QA',         // 품질 팀장 (검토/비판/연속성)

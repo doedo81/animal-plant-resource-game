@@ -4,6 +4,7 @@ label: 장편 판타지 (문예형)
 chapters: 4
 targetChars: 6000
 passScore: 85
+studio: STUDIO_EPIC
 ---
 # 장르 팩: 장편 판타지 (문예형)
 

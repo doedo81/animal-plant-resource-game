@@ -1,0 +1,24 @@
+[
+  {
+    "idea": "기억을 파는 대가로 마력을 얻는 소년",
+    "preset": "webnovel",
+    "chapters": 5
+  },
+  {
+    "idea": "장례식장에서 마주친 원수 가문의 두 사람",
+    "preset": "romance",
+    "chapters": 5,
+    "notes": "수위는 손잡기까지. 신파 금지"
+  },
+  {
+    "idea": "몰락한 변방 영지를 물려받은 전생자",
+    "preset": "estate",
+    "chapters": 6,
+    "style": "짧고 건조한 문장, 숫자는 감각과 함께"
+  },
+  {
+    "idea": "죽은 사람의 기억을 백업할 수 있게 된 세계의 장의사",
+    "preset": "sf",
+    "chapters": 4
+  }
+]

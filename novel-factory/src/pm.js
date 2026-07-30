@@ -17,7 +17,7 @@ const { LLM } = require('./llm');
 const { ContextManager } = require('./context');
 const { AgentRunner } = require('./agent');
 const { loadRoles, loadGenres } = require('./roles');
-const { makeHandoff } = require('./schema');
+const { makeHandoff, ACTORS } = require('./schema');
 const { newId, nowIso, ensureDir, writeJson, readJson, pad, countChars, truncate } = require('./util');
 
 class Orchestrator {
@@ -28,6 +28,9 @@ class Orchestrator {
     this.registry = loadRoles();
     this.genres = loadGenres();
     this.genre = this.genres[brief.preset] || this.genres.webnovel;
+    // 이 프로젝트를 총괄하는 장르 스튜디오 팀장. 산하 기능 팀(스토리/집필/품질/리서치)을
+    // 조직하는 주체이며, 사용자(HUMAN)는 이 팀장의 최종 보고만 받는다.
+    this.studio = ACTORS.includes(this.genre.studio) ? this.genre.studio : 'STUDIO_LEAD';
 
     this.projectId = projectId || newId('prj');
     this.projectDir = path.join(path.resolve(cfg.workspaceRoot), this.projectId);
@@ -222,10 +225,10 @@ class Orchestrator {
   async _delegate(roleCode, opts) {
     const role = this.registry[roleCode];
     const leader = role.team;
-    this._route('PM', leader, `${roleCode} 과제 배분`, opts.task, opts.outFile);
+    this._route(this.studio, leader, `${roleCode} 과제 배분`, opts.task, opts.outFile);
     this._route(leader, roleCode, `${leader} → ${roleCode} 세부 과제 지시`, opts.task, opts.outFile);
 
-    this.bus.drain(leader, 'PM 지시 수령');
+    this.bus.drain(leader, '스튜디오 팀장 지시 수령');
 
     let result = await this.runner.run(roleCode, opts);
     this.bus.drain(roleCode, '팀원이 지시를 수행함');
@@ -251,8 +254,8 @@ class Orchestrator {
       }
     }
 
-    this._route(leader, 'PM', `${roleCode} 산출물 검수 완료`, '다음 단계 진행', result.path);
-    this.bus.drain('PM', '보고 수령 후 다음 단계 진행');
+    this._route(leader, this.studio, `${roleCode} 산출물 검수 완료`, '다음 단계 진행', result.path);
+    this.bus.drain(this.studio, '보고 수령 후 다음 단계 진행');
     this._checkpoint(opts.stageKey);
     return result;
   }
@@ -291,11 +294,11 @@ class Orchestrator {
   async run() {
     const b = this.brief;
     const t0 = Date.now();
-    this.logger.stage(`프로젝트 시작: ${this.projectId} / 장르=${this.genre.label} / 회차=${b.chapters}`);
+    this.logger.stage(`프로젝트 시작: ${this.projectId} / 담당 팀장=${this.studio} (${this.genre.label}) / 회차=${b.chapters}`);
     this._rehydrate();
 
     this.bus.publish(makeHandoff({
-      trace_id: this.projectId, sender: 'HUMAN', receiver: 'PM', status: 'COMPLETE',
+      trace_id: this.projectId, sender: 'HUMAN', receiver: this.studio, status: 'COMPLETE',
       summary: `아이디어 접수: ${b.idea}`,
       next_action: `${this.genre.label} 형식으로 ${b.chapters}회차 제작하라.`,
       data_payload_path: 'brief.json',
@@ -451,9 +454,9 @@ class Orchestrator {
 
     // ── 8. 최종 조립 + PM 승인 ───────────────────────────────
     const manuscriptPath = this._assemble(chapters);
-    this.logger.stage('8단계 · PM 최종 승인');
-    this._route('LEAD_WRITING', 'PM', '전 회차 최종고 취합 완료', '최종 승인 판정 요청', manuscriptPath);
-    this.bus.drain('PM', '최종 승인 심사 착수');
+    this.logger.stage(`8단계 · ${this.studio} 최종 검수 및 보고`);
+    this._route('LEAD_WRITING', this.studio, '전 회차 최종고 취합 완료', '최종 승인 판정 요청', manuscriptPath);
+    this.bus.drain(this.studio, '최종 승인 심사 착수');
 
     const pmResult = await this.runner.run('PM', {
       stageKey: 'final',
@@ -470,6 +473,15 @@ class Orchestrator {
     });
 
     this.state.completed.final = pmResult.path; this._save();
+
+    // 스튜디오 팀장의 최종 결과 보고 — 사용자는 이 한 건만 보면 된다.
+    const scoreLine = this.report.chapters.map((c) => `${c.no}화 ${c.finalScore}점`).join(', ');
+    this.bus.publish(makeHandoff({
+      trace_id: this.projectId, sender: this.studio, receiver: 'HUMAN', status: 'COMPLETE',
+      summary: `[${this.genre.label}] 제작 완료 — ${scoreLine}${this.report.escalations.length ? ` / 에스컬레이션 ${this.report.escalations.length}건` : ''}`,
+      next_action: 'MANUSCRIPT.md 를 검토하고 확장 여부를 지시해 주세요.',
+      data_payload_path: manuscriptPath,
+    }));
 
     const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
     const summary = {
@@ -553,7 +565,7 @@ class Orchestrator {
           chapter: ch.no, reason: `개고 ${maxRev}회 후에도 통과선 미달 (최고 ${bestScore}점)`, action: 'NEEDS_HUMAN',
         });
         this.bus.publish(makeHandoff({
-          trace_id: this.projectId, sender: 'LEAD_QA', receiver: 'PM', status: 'NEEDS_HUMAN',
+          trace_id: this.projectId, sender: 'LEAD_QA', receiver: this.studio, status: 'NEEDS_HUMAN',
           summary: `제${ch.no}화 품질 정체 — 최고 ${bestScore}점 (통과선 ${passScore})`,
           next_action: '사용자 판단 필요: 통과선 조정 또는 방향 재지시',
           data_payload_path: `chapters/${key}.draft${revisions + 1}.md`,
@@ -592,7 +604,7 @@ class Orchestrator {
       inputs: { 원고: bestText, 캐논: this.canonSummary(), 기확정_사실: this.canon.established_facts, 미회수_복선: this.canon.open_threads },
       meta: chMeta,
       outFile: `canon/continuity.${key}.json`,
-      receiver: 'PM',
+      receiver: this.studio,
     });
     const upd = cont.data?.canon_updates || {};
     this.canon.established_facts.push(...(upd.established_facts || []));
@@ -608,7 +620,7 @@ class Orchestrator {
       inputs: { 원고: bestText },
       meta: { ...chMeta, sourceText: bestText },
       outFile: `chapters/${key}.final.md`,
-      receiver: 'PM',
+      receiver: this.studio,
     });
 
     return {
@@ -664,7 +676,7 @@ class Orchestrator {
         stage: 'polish', reason: '구조 수준의 문제 지적됨', detail: diag.data.structural_risk, action: 'NEEDS_HUMAN',
       });
       this.bus.publish(makeHandoff({
-        trace_id: this.projectId, sender: 'LEAD_WRITING', receiver: 'PM', status: 'NEEDS_HUMAN',
+        trace_id: this.projectId, sender: 'LEAD_WRITING', receiver: this.studio, status: 'NEEDS_HUMAN',
         summary: `퇴고 단계에서 구조적 문제 발견: ${diag.data.structural_risk.join(' / ')}`,
         next_action: '사용자 판단 필요: 구조 변경은 개고 범위를 넘는다',
         data_payload_path: 'reports/polish-diagnosis.json',
@@ -696,7 +708,7 @@ class Orchestrator {
         },
         meta: { idea: this.brief.idea, chapterNo: d.no, chapterTitle: ch.title, sourceText: before },
         outFile: `chapters/${key}.final.md`,
-        receiver: 'PM',
+        receiver: this.studio,
       });
 
       const after = this.guard.read(`chapters/${key}.final.md`, '');

@@ -4,6 +4,7 @@ label: 웹소설 (연재형)
 chapters: 5
 targetChars: 3000
 passScore: 80
+studio: STUDIO_WEBNOVEL
 ---
 # 장르 팩: 웹소설 (연재형)
 

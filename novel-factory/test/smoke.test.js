@@ -140,11 +140,19 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'novel-factory-'));
       assert.ok(roles[code].prompt.length > 100, `프롬프트 부실: ${code}`);
     }
   });
-  test('장르 프리셋 4종이 로드된다', () => {
+  test('장르 프리셋 5종이 로드되고 스튜디오 팀장이 배정된다', () => {
     const g = loadGenres();
-    assert.ok(g.webnovel && g.romance && g.epic && g.estate);
+    assert.ok(g.webnovel && g.romance && g.epic && g.estate && g.sf);
     assert.strictEqual(typeof g.webnovel.passScore, 'number');
     assert.ok(g.estate.prompt.includes('지표'), '영지물 팩에 지표 규약이 없음');
+    assert.strictEqual(g.webnovel.studio, 'STUDIO_WEBNOVEL');
+    assert.strictEqual(g.romance.studio, 'STUDIO_ROMANCE');
+    assert.strictEqual(g.epic.studio, 'STUDIO_EPIC');
+    assert.strictEqual(g.sf.studio, 'STUDIO_SF');
+    const { ACTORS } = require('../src/schema');
+    for (const genre of Object.values(g)) {
+      assert.ok(ACTORS.includes(genre.studio), `미등록 스튜디오 코드: ${genre.studio}`);
+    }
   });
 
   console.log('\n[6] 파서');
@@ -205,6 +213,30 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'novel-factory-'));
     }
     // 퇴고본이 백업을 남기고 덮어썼는지
     assert.ok(fs.existsSync(path.join(s.project_dir, '.cache', 'backups')), '퇴고 전 백업이 없음');
+  });
+
+  await test('스튜디오 팀장이 조직을 총괄하고 HUMAN 에게 결과를 보고한다', async () => {
+    const cfg = loadConfig({ llm: { provider: 'mock' } });
+    cfg.workspaceRoot = path.join(tmp, 'studio');
+    cfg.sessionStateRoot = path.join(tmp, 'studio', 'session_state');
+    const logger = new Logger({ quiet: true });
+    const orch = new Orchestrator({
+      cfg, logger,
+      brief: { idea: '기억 백업 세계의 장의사', preset: 'sf', chapters: 1, targetChars: 800, passScore: 82, research: false },
+    });
+    assert.strictEqual(orch.studio, 'STUDIO_SF');
+    const s = await orch.run();
+
+    const ledger = fs.readFileSync(path.join(s.project_dir, 'bus', 'events.jsonl'), 'utf8');
+    const events = ledger.trim().split('\n').map(JSON.parse).filter((e) => e.type === 'PUBLISH');
+    // 과제 배분의 주체가 스튜디오 팀장이다
+    assert.ok(events.some((e) => e.sender === 'STUDIO_SF' && e.receiver === 'LEAD_STORY'), '스튜디오 팀장의 배분 이벤트 없음');
+    // 기능 팀장들은 스튜디오 팀장에게 보고한다
+    assert.ok(events.some((e) => e.sender === 'LEAD_QA' && e.receiver === 'STUDIO_SF'), '기능 팀장 → 스튜디오 보고 없음');
+    // 사용자는 스튜디오 팀장의 최종 보고를 받는다
+    const final = events.filter((e) => e.sender === 'STUDIO_SF' && e.receiver === 'HUMAN' && e.status === 'COMPLETE');
+    assert.ok(final.length >= 1, '스튜디오 → HUMAN 최종 보고 없음');
+    assert.ok(final[final.length - 1].summary.includes('제작 완료'), '최종 보고 형식 이상');
   });
 
   await test('재개(resume) 시 완료 단계를 건너뛴다', async () => {

@@ -4,6 +4,7 @@ label: 영지 경영물
 chapters: 6
 targetChars: 3500
 passScore: 81
+studio: STUDIO_ESTATE
 ---
 # 장르 팩: 영지 경영물 (내정 · 육성)
 

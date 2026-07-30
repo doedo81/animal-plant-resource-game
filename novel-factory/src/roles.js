@@ -70,6 +70,7 @@ function loadGenres() {
       chapters: meta.chapters || 3,
       targetChars: meta.targetChars || 3000,
       passScore: meta.passScore || 82,
+      studio: meta.studio || 'STUDIO_LEAD', // 이 장르를 총괄하는 스튜디오 팀장 코드
       prompt: body.trim(),
     };
   }

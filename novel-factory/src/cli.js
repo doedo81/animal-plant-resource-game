@@ -48,6 +48,7 @@ ${COLOR.bold}소설 공장 (Novel Factory) — 다중 에이전트 자동 집필
 
 사용법:
   node src/cli.js run --idea "<한 줄 아이디어>" [옵션]
+  node src/cli.js batch <jobs.json>       여러 스튜디오 팀장에게 동시 발주, 종합 보고만 수신
   node src/cli.js resume <projectId>
   node src/cli.js status <projectId>
   node src/cli.js bus <projectId> [건수]
@@ -139,6 +140,96 @@ async function cmdRun(args) {
   const summary = await orch.run();
   printSummary(summary);
   return summary;
+}
+
+/**
+ * batch — 발주서 파일을 읽어 여러 스튜디오 팀장에게 순차 발주한다.
+ * 각 팀장이 산하 조직을 돌려 작품을 완성하고, 사용자는 마지막 종합 보고만 받는다.
+ * 진행 로그는 기본 침묵(--verbose 로 해제). "결과만 보고" 가 이 명령의 계약이다.
+ */
+async function cmdBatch(args) {
+  const jobsPath = args._[1];
+  if (!jobsPath) {
+    console.error('발주서 파일을 지정하세요: node src/cli.js batch <jobs.json>  (템플릿: templates/jobs.example.json)');
+    process.exit(1);
+  }
+  const jobs = readJson(path.resolve(process.cwd(), jobsPath));
+  if (!Array.isArray(jobs) || !jobs.length) {
+    console.error(`발주서가 비어 있거나 JSON 배열이 아닙니다: ${jobsPath}`);
+    process.exit(1);
+  }
+
+  const genres = loadGenres();
+  const cfg = loadConfig({ llm: { provider: args.provider || 'mock' } });
+  ensureDir(cfg.workspaceRoot);
+  const results = [];
+
+  console.log(`\n${COLOR.bold}발주 ${jobs.length}건 접수 — 각 스튜디오 팀장에게 배정합니다${COLOR.reset}`);
+
+  for (let i = 0; i < jobs.length; i++) {
+    const job = jobs[i];
+    const g = genres[job.preset || 'webnovel'];
+    if (!g || !job.idea) {
+      results.push({ ok: false, idea: job.idea || '(없음)', error: !job.idea ? 'idea 누락' : `알 수 없는 preset: ${job.preset}` });
+      console.log(`  ${COLOR.error}✘ [${i + 1}/${jobs.length}] 발주 반려: ${results[i].error}${COLOR.reset}`);
+      continue;
+    }
+    const brief = {
+      idea: String(job.idea),
+      preset: g.preset,
+      chapters: Number(job.chapters || g.chapters),
+      targetChars: Number(job.chars || g.targetChars),
+      passScore: Number(job.pass || g.passScore),
+      notes: job.notes || '',
+      style: job.style || '',
+      research: job.research !== false,
+      trend: !!job.trend,
+      trendData: '',
+    };
+    const logger = new Logger({ quiet: !args.verbose, file: path.join(cfg.workspaceRoot, 'factory.log') });
+    const orch = new Orchestrator({ cfg, logger, brief });
+    console.log(`  ▸ [${i + 1}/${jobs.length}] ${orch.studio} 에 발주: "${brief.idea}" (${g.label}, ${brief.chapters}회차)`);
+    try {
+      const s = await orch.run();
+      results.push({ ok: true, studio: orch.studio, label: g.label, brief, summary: s });
+      const scores = s.chapters.map((c) => `${c.no}화 ${c.finalScore}`).join(' ');
+      console.log(`    ${COLOR.ok}✔ 완성 — ${scores} → ${path.join(s.project_dir, s.manuscript)}${COLOR.reset}`);
+    } catch (err) {
+      results.push({ ok: false, studio: orch.studio, idea: brief.idea, error: err.message });
+      console.log(`    ${COLOR.error}✘ 실패: ${err.message}${COLOR.reset}`);
+    }
+  }
+
+  // 종합 보고서 — 사용자가 받는 유일한 문서
+  const lines = [
+    '# 스튜디오 종합 보고',
+    '',
+    `- 발주: ${jobs.length}건 / 완성: ${results.filter((r) => r.ok).length}건`,
+    '',
+  ];
+  for (const r of results) {
+    if (!r.ok) {
+      lines.push(`## ✘ ${r.idea}`, `- 실패: ${r.error}`, '');
+      continue;
+    }
+    const s = r.summary;
+    lines.push(
+      `## ${r.label} — ${r.brief.idea}`,
+      `- 담당 팀장: ${r.studio}`,
+      `- 원고: ${path.join(s.project_dir, s.manuscript)}`,
+      `- 회차: ${s.chapters.map((c) => `${c.no}화 ${c.finalScore}점(개고${c.revisions})`).join(' · ')}`,
+      `- 퇴고 손질: ${s.polish?.touched_chapters?.length ?? 0}개 회차`,
+      `- 에스컬레이션: ${s.escalations.length}건${s.escalations.length ? ' ← 확인 필요' : ''}`,
+      `- 비용: LLM ${s.usage.calls}회 호출`,
+      '',
+    );
+  }
+  const reportPath = path.join(cfg.workspaceRoot, 'BATCH_REPORT.md');
+  fs.writeFileSync(reportPath, lines.join('\n') + '\n', 'utf8');
+
+  console.log(`\n${COLOR.bold}${COLOR.ok}━━ 전 스튜디오 보고 완료 ━━${COLOR.reset}`);
+  console.log(lines.join('\n'));
+  console.log(`종합 보고서: ${reportPath}\n`);
 }
 
 async function cmdResume(args) {
@@ -242,6 +333,7 @@ async function main() {
   try {
     switch (cmd) {
       case 'run': await cmdRun(args); break;
+      case 'batch': await cmdBatch(args); break;
       case 'resume': await cmdResume(args); break;
       case 'status': cmdStatus(args); break;
       case 'bus': cmdBus(args); break;

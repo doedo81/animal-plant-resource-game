@@ -4,6 +4,7 @@ label: 로맨스
 chapters: 5
 targetChars: 3500
 passScore: 82
+studio: STUDIO_ROMANCE
 ---
 # 장르 팩: 로맨스
 
