@@ -102,7 +102,8 @@ node src/cli.js presets               # 작가 유형 목록
 | [docs/CONTROL.md](docs/CONTROL.md) | **모델(ChatGPT)을 어떻게 통제·감시하는가** — 7겹 통제 장치 |
 | [docs/PROMPTS.md](docs/PROMPTS.md) | PM / 팀장·팀원 공통 / 역할별 시스템 프롬프트 전문 |
 | [docs/SETUP_PC.md](docs/SETUP_PC.md) | **내 PC에서 돌리기** — 설치, 클라우드 동기화 차단 등 보안 설정, 납품 후 정리 |
-| [docs/DISCORD_PLAN.md](docs/DISCORD_PLAN.md) | **헤르메스 발주서** — 디스코드를 조종석으로 만드는 연동 계획 (ChatGPT에게 주는 문서) |
+| [docs/CODEX_PLAN.md](docs/CODEX_PLAN.md) | **코덱스 발주서** — ChatGPT 구독(Codex CLI)으로 돌리고 워크트리로 병렬 집필하는 재설계 |
+| [docs/DISCORD_PLAN.md](docs/DISCORD_PLAN.md) | 헤르메스 발주서 — 디스코드 연동 계획 (코덱스 안착 후 선택) |
 
 ## 문체 · 트렌드 · 퇴고
 
